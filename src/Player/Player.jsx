@@ -1,104 +1,68 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Video } from 'cloudinary-react';
+import { FiSkipBack, FiSkipForward, FiPlay, FiPause } from 'react-icons/fi'; // Import icons
 import './player.scss';
-import { BsFillPlayCircleFill, BsFillPauseCircleFill, BsFillSkipStartCircleFill, BsFillSkipEndCircleFill, BsVolumeDown } from 'react-icons/bs';
+import { songsdata } from './audios';
 
-const Player = ({ audioElem, videoElem, isplaying, setisplaying, currentSong, setCurrentSong, songs }) => {
-  const clickRef = useRef();
-  const [volume, setVolume] = useState(1); // Initialize volume to maximum (1)
-
-  const PlayPause = () => {
-    setisplaying(!isplaying);
-  }
-
-  const checkWidth = (e) => {
-    let width = clickRef.current.clientWidth;
-    const offset = e.nativeEvent.offsetX;
-    const divprogress = offset / width * 100;
-    audioElem.current.currentTime = divprogress / 100 * currentSong.length;
-    videoElem.current.currentTime = divprogress / 100 * currentSong.videoLength;
-  }
-
-  const skipBack = () => {
-    const index = songs.findIndex(x => x.title === currentSong.title);
-    const prevIndex = (index === 0) ? songs.length - 1 : index - 1;
-    setCurrentSong(songs[prevIndex]);
-    audioElem.current.currentTime = 0;
-    videoElem.current.currentTime = 0;
-  }
-
-  const skiptoNext = () => {
-    const index = songs.findIndex(x => x.title === currentSong.title);
-    const nextIndex = (index === songs.length - 1) ? 0 : index + 1;
-    setCurrentSong(songs[nextIndex]);
-    audioElem.current.currentTime = 0;
-    videoElem.current.currentTime = 0;
-  }
-
-  const volumeChange = (e) => {
-    const newVolume = parseFloat(e.target.value);
-    setVolume(newVolume);
-    audioElem.current.volume = newVolume;
-  }
+const Player = () => {
+  const [currentSongIndex, setCurrentSongIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const videoRef = useRef(null);
+  const playbackPositionRef = useRef(0);
 
   useEffect(() => {
-    if (isplaying) {
-      audioElem.current.play();
-      videoElem.current.play();
-    } else {
-      audioElem.current.pause();
-      videoElem.current.pause();
-    }
-
-    return () => {
-      audioElem.current.pause();
-      videoElem.current.pause();
-    };
-  }, [isplaying]);
-
-  useEffect(() => {
-    const handleVideoEnd = () => {
-      if (!audioElem.current.ended) {
-        videoElem.current.currentTime = 0;
-        videoElem.current.play();
+    const video = videoRef.current && videoRef.current.video;
+    if (video) {
+      if (isPlaying) {
+        video.currentTime = playbackPositionRef.current;
+        video.play();
+      } else {
+        playbackPositionRef.current = video.currentTime;
+        video.pause();
       }
-    };
+    }
+  }, [isPlaying]);
 
-    videoElem.current.addEventListener('ended', handleVideoEnd);
+  const togglePlayPause = () => {
+    console.log("Toggle play/pause clicked");
+    setIsPlaying((prevState) => !prevState);
+  };
 
-    return () => {
-      videoElem.current.removeEventListener('ended', handleVideoEnd);
-    };
-  }, [currentSong]);
+  const playNextSong = () => {
+    setCurrentSongIndex((prevIndex) => (prevIndex + 1) % songsdata.length);
+    playbackPositionRef.current = 0;
+  };
+
+  const playPreviousSong = () => {
+    setCurrentSongIndex((prevIndex) =>
+      prevIndex === 0 ? songsdata.length - 1 : prevIndex - 1
+    );
+    playbackPositionRef.current = 0;
+  };
+
+  const currentSong = songsdata[currentSongIndex];
 
   return (
     <div className='player_container'>
       <div className="title">
         <p>{currentSong.title}</p>
       </div>
-      <div className="navigation">
-        <div className="navigation_wrapper" onClick={checkWidth} ref={clickRef}>
-          <div className="seek_bar" style={{ width: `${currentSong.progress + "%"}` }}></div>
-        </div>
-      </div>
+      <Video
+        ref={videoRef}
+        cloudName="du6p1dtm3"
+        publicId={currentSong.videoUrl}
+        controls
+        loop
+        autoPlay
+      />
       <div className="controls">
-        <BsFillSkipStartCircleFill className='btn_action' onClick={skipBack} />
-        {isplaying ? <BsFillPauseCircleFill className='btn_action pp' onClick={PlayPause} /> : <BsFillPlayCircleFill className='btn_action pp' onClick={PlayPause} />}
-        <BsFillSkipEndCircleFill className='btn_action' onClick={skiptoNext} />
-        <div className="volume-container">
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value={volume}
-            onChange={volumeChange}
-            className="volume-slider"
-          />
-          <BsVolumeDown className='volumeDown' />
-        </div>
+        <button className="btn_action" onClick={playPreviousSong}><FiSkipBack /></button>
+        <button className="btn_action" onClick={togglePlayPause}>
+          {isPlaying ? <FiPause /> : <FiPlay />}
+        </button>
+        <button className="btn_action" onClick={playNextSong}><FiSkipForward /></button>
       </div>
     </div>
-  )
-}
-
+  );
+};
 export default Player;
